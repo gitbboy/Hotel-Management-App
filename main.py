@@ -1,11 +1,10 @@
-from gui import HotelApp
 from database import Database
+from gui.main_window import HotelApp
 import tkinter as tk
 
-#from gui.main_window import HotelApp - будет реализован парсинг файла
-db = Database()
 
 def test_database_connection():
+    db = Database()
     print("ТЕСТ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ")
 
     try:
@@ -31,8 +30,8 @@ def start_window():
     app = HotelApp(window)
     window.mainloop()
 
-#test_database_connection() - тест подключения к БД
-start_window()
+#test_database_connection() # тест подключения к БД
+start_window() # точка входа в программу
 
 
 

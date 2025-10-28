@@ -1,10 +1,9 @@
 import tkinter as tk
+from tkinter import ttk, messagebox
 import pandas as pd
-from tkinter import ttk, messagebox, filedialog
 from models import Employee, Guest, HotelRoom, Booking
 from services.export_service import ExportService
 from datetime import datetime, timedelta
-import sys, os
 
 
 class ReportsTab(ttk.Frame):
@@ -27,7 +26,7 @@ class ReportsTab(ttk.Frame):
         ttk.Button(reports_btn_frame, text="Отчет по сотрудникам",
                    command=self.staff_report, width=20).pack(side='left', padx=5)
         ttk.Button(reports_btn_frame, text="Резервное копирование БД",
-                   command=self.export_report, width=20).pack(side='left', padx=5)
+                   command=self.recovery_report, width=20).pack(side='left', padx=5)
 
         # Фрейм для фильтров (будет показываться для некоторых отчетов)
         self.filters_frame = ttk.Frame(self)
@@ -42,7 +41,7 @@ class ReportsTab(ttk.Frame):
         report_actions_frame.pack(pady=5)
 
         ttk.Button(report_actions_frame, text="Экспорт в Excel",
-                   command=self.export_report).pack(side='left', padx=5)
+                   command=self.excel_report).pack(side='left', padx=5)
         ttk.Button(report_actions_frame, text="Экспорт в PDF",
                    command=self.pdf_report).pack(side='left', padx=5)
         ttk.Button(report_actions_frame, text="Очистить",
@@ -90,10 +89,9 @@ class ReportsTab(ttk.Frame):
         ttk.Button(self.filters_frame, text="Применить фильтры",
                    command=self.apply_filters).pack(pady=5)
 
-        # Привязка события для показа/скрытия произвольных дат
         self.period_var.trace('w', self.toggle_custom_dates)
 
-    def toggle_custom_dates(self, *args):
+    def toggle_custom_dates(self):
         """Показать/скрыть поля для произвольных дат"""
         if self.period_var.get() == "custom":
             self.custom_dates_frame.pack(pady=5)
@@ -108,8 +106,6 @@ class ReportsTab(ttk.Frame):
             self.financial_report()
         elif self.current_report_type == "guests":
             self.guests_report()
-        elif self.current_report_type == "recover":
-            self.recover_report()
 
     def get_date_range(self):
         """Получение диапазона дат на основе выбранного периода"""
@@ -214,9 +210,8 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось сформировать отчет по занятости: {str(e)}")
 
     def financial_report(self):
-        """Финансовый отчет"""
         self.clear_report()
-        self.current_report_type = "financial"  # УСТАНОВКА ТИПА ОТЧЕТА
+        self.current_report_type = "financial"
         self.setup_date_filters()
 
         # Настройка колонок
@@ -284,12 +279,10 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось сформировать финансовый отчет: {str(e)}")
 
     def guests_report(self):
-        """Отчет по гостям"""
         self.clear_report()
-        self.current_report_type = "guests"  # УСТАНОВКА ТИПА ОТЧЕТА
+        self.current_report_type = "guests"
         self.setup_date_filters()
 
-        # Настройка колонок
         self.report_tree['columns'] = ('guest_name', 'phone', 'total_bookings',
                                        'total_nights', 'last_booking', 'total_spent')
 
@@ -354,135 +347,10 @@ class ReportsTab(ttk.Frame):
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось сформировать отчет по гостям: {str(e)}")
 
-    def recover_report(self):
-        self.clear_report()
-        self.current_report_type = "recover"  # УСТАНОВКА ТИПА ОТЧЕТА
-        self.clear_filters()  # Для этого отчета фильтры не нужны
-
+    @staticmethod
+    def recovery_report():
         try:
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-                title="Сохранить отчет как"
-            )
-
-            if not file_path:  # Отмена
-                return
-
-            data_sheets = {}
-
-            # 1. Данные сотрудников
-            try:
-                employees = Employee.get_all()
-                if employees:
-                    emp_data = []
-                    for emp in employees:
-                        emp_data.append({
-                            'ID': emp.id,
-                            'Фамилия': emp.get_surname(),
-                            'Имя': emp.get_name(),
-                            'Отчество': emp.get_patronymic(),
-                            'Должность': emp.get_position(),
-                            'Телефон': emp.get_phone_num(),
-                            'Email': emp.get_mail(),
-                            'Дата принятия': emp.get_date_of_employment()
-                        })
-                    data_sheets['Сотрудники'] = pd.DataFrame(emp_data)
-            except Exception as e:
-                messagebox.showwarning("Предупреждение", f"Не удалось получить данные сотрудников: {str(e)}")
-
-            # 2. Данные номеров
-            try:
-                rooms = HotelRoom.get_all()
-                if rooms:
-                     room_data = []
-                     for room in rooms:
-                         room_data.append({
-                             'ID': room.id,
-                             'Номер': room.get_number(),
-                             'Тип': room.get_type(),
-                             'Цена': room.get_price(),
-                             'Статус': room.is_free(),
-                             'Вместимость': room.get_capacity()
-                         })
-                     data_sheets['Номера'] = pd.DataFrame(room_data)
-                pass
-            except Exception as e:
-                messagebox.showwarning("Предупреждение", f"Не удалось получить данные номеров: {str(e)}")
-
-            # 3. Данные бронирований
-            try:
-                bookings = Booking.get_all()
-                if bookings:
-                    booking_data = []
-                    for booking in bookings:
-                        """ Получаем информацию о госте и номере по их ID
-                        guest = Guest.get_by_id(booking.get_guest_id())  # Нужно реализовать
-                        room = HotelRoom.get_by_id(booking.get_room_id())  # Нужно реализовать
-                        """
-                        booking_data.append({
-                            'ID': booking.id,
-                            'ID_Гостя': booking.get_guest_id(),
-                            'ID_Номера': booking.get_room_id(),
-                            'Дата_заезда': booking.get_check_in_date(),
-                            'Дата_выезда': booking.get_check_out_date(),
-                            'Статус': 'Активно' if booking.get_is_active() else 'Неактивно'
-
-                        })
-                    data_sheets['Бронирования'] = pd.DataFrame(booking_data)
-            except Exception as e:
-                messagebox.showwarning("Предупреждение", f"Не удалось получить данные бронирований: {str(e)}")
-
-            # 4. Данные гостей
-            try:
-                guests = Guest.get_all()
-                if guests:
-                     guest_data = []
-                     for guest in guests:
-                         guest_data.append({
-                             'ID': guest.id,
-                             'Фамилия': guest.get_surname(),
-                             'Имя': guest.get_name(),
-                             'Отчество': guest.get_patronymic(),
-                             'Телефон': guest.get_phone_num(),
-                         })
-                     data_sheets['Гости'] = pd.DataFrame(guest_data)
-                pass
-            except Exception as e:
-                messagebox.showwarning("Предупреждение", f"Не удалось получить данные гостей: {str(e)}")
-
-            if not data_sheets:
-                messagebox.showwarning("Предупреждение", "Нет данных для экспорта")
-                return
-
-            with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
-                for sheet_name, df in data_sheets.items():
-                    df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-                    worksheet = writer.sheets[sheet_name]
-
-                    # Автоподбор
-                    for column in worksheet.columns:
-                        max_length = 0
-                        column_letter = column[0].column_letter
-                        for cell in column:
-                            try:
-                                if len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
-                        adjusted_width = (max_length + 2)
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
-
-            messagebox.showinfo("Успех", f"Данные успешно экспортированы в файл:\n{file_path}")
-
-            open_file = messagebox.askyesno("Открыть файл", "Хотите открыть полученный файл?")
-            if open_file:
-                if os.name == 'nt':  # Windows
-                    os.startfile(file_path)
-                elif os.name == 'posix':  # macOS, Linux
-                    os.system(f'open "{file_path}"' if sys.platform == 'darwin' else f'xdg-open "{file_path}"')
-
+            ExportService.extract_excel_all()
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось экспортировать данные: {str(e)}")
 
@@ -492,7 +360,6 @@ class ReportsTab(ttk.Frame):
         self.current_report_type = "staff"  # УСТАНОВКА ТИПА ОТЧЕТА
         self.clear_filters()  # Для этого отчета фильтры не нужны
 
-        # Настройка колонок
         self.report_tree['columns'] = ('employee_name', 'position', 'phone', 'email',
                                        'hire_date', 'experience_months')
 
@@ -543,8 +410,7 @@ class ReportsTab(ttk.Frame):
         overlap_end = min(end1, end2)
         return max(0, (overlap_end - overlap_start).days + 1)
 
-    def export_report(self):
-        """Экспорт текущего отчета в Excel"""
+    def excel_report(self):
         try:
             if not self.current_report_type:
                 messagebox.showwarning("Предупреждение", "Сначала сгенерируйте отчет")
@@ -565,8 +431,6 @@ class ReportsTab(ttk.Frame):
                 values = self.report_tree.item(item)['values']
                 data.append(values)
 
-            # Создание DataFrame
-            import pandas as pd
             df = pd.DataFrame(data, columns=headers)
 
             # Определение имени листа на основе типа отчета
@@ -579,7 +443,6 @@ class ReportsTab(ttk.Frame):
 
             sheet_name = sheet_names.get(self.current_report_type, "Отчет")
 
-            # Экспорт
             success = ExportService.export_single_sheet(df, sheet_name)
 
             if success:
@@ -589,5 +452,37 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось экспортировать отчет: {str(e)}")
 
     def pdf_report(self):
-        """Экспорт в PDF (заглушка)"""
-        messagebox.showinfo("Информация", "Экспорт в PDF будет реализован в будущей версии")
+        try:
+            if not self.current_report_type:
+                messagebox.showwarning("Предупреждение", "Сначала сгенерируйте отчет")
+                return
+
+            columns = self.report_tree['columns']
+            if not columns:
+                messagebox.showwarning("Предупреждение", "Нет данных для экспорта")
+                return
+
+            headers = [self.report_tree.heading(col)['text'] for col in columns]
+
+            data = []
+            for item in self.report_tree.get_children():
+                values = self.report_tree.item(item)['values']
+                data.append(values)
+
+            df = pd.DataFrame(data, columns=headers)
+
+            report_titles = {
+                "occupancy": "Отчет по занятости номеров",
+                "financial": "Финансовый отчет",
+                "guests": "Отчет по гостям",
+                "staff": "Отчет по сотрудникам"
+            }
+
+            report_title = report_titles.get(self.current_report_type, "Отчет")
+            success = ExportService.export_single_sheet_to_pdf(df, report_title)
+
+            if success:
+                messagebox.showinfo("Успех", "Отчет успешно экспортирован в PDF")
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось экспортировать отчет в PDF: {str(e)}")

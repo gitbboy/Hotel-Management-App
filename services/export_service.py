@@ -214,11 +214,9 @@ class ExportService:
                 messagebox.showwarning("Предупреждение", "Нет данных для экспорта")
                 return False
 
-            # Регистрируем шрифты
             if not ExportService._register_fonts():
                 return False
 
-            # Создаем PDF документ с АЛЬБОМНОЙ ориентацией
             doc = SimpleDocTemplate(
                 file_path,
                 pagesize=landscape(A4),
@@ -328,12 +326,11 @@ class ExportService:
     @staticmethod
     def _register_fonts():
         try:
-            # Определяем путь к папке fonts
+            
             current_dir = os.path.dirname(os.path.abspath(__file__))
             project_dir = os.path.dirname(current_dir)
             fonts_dir = os.path.join(project_dir, 'fonts')
 
-            # Пути к шрифтам NotoSans
             regular_font_path = os.path.join(fonts_dir, 'NotoSans.ttf')
             bold_font_path = os.path.join(fonts_dir, 'NotoSansBld.ttf')
 

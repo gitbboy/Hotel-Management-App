@@ -1,8 +1,15 @@
 from database import Database
+from exceptions import InvalidDataError
 
 
 class Person:
     def __init__(self, name, surname, phone_num, patronymic="", id=None):
+        if not name or not surname:
+            raise InvalidDataError("Имя и фамилия обязательны")
+
+        if not phone_num:
+            raise InvalidDataError("Номер телефона обязателен")
+
         self.id = id
         self._name = name
         self._surname = surname
@@ -31,6 +38,8 @@ class Person:
         return self._phone_num
 
     def set_phone_num(self, value):
+        if not value:
+            raise InvalidDataError("Номер телефона не может быть пустым")
         self._phone_num = value
 
     def full_name(self):
@@ -54,6 +63,16 @@ class Person:
 class Employee(Person):
     def __init__(self, name, surname, position, phone_num, mail, date_of_employment, patronymic="", id=None):
         super().__init__(name, surname, phone_num, patronymic, id)
+
+        if not position:
+            raise InvalidDataError("Должность обязательна")
+
+        if not mail or "@" not in mail:
+            raise InvalidDataError("Некорректный email")
+
+        if not date_of_employment:
+            raise InvalidDataError("Дата приема на работу обязательна")
+
         self.__position = position
         self.__mail = mail
         self.__date_of_employment = date_of_employment
@@ -150,6 +169,10 @@ class Employee(Person):
 class Guest(Person):
     def __init__(self, name, surname, phone_num, passport_data, patronymic="", id=None):
         super().__init__(name, surname, phone_num, patronymic, id)
+
+        if not passport_data:
+            raise InvalidDataError("Паспортные данные обязательны")
+
         self.__passport_data = passport_data
 
     def get_passport_data(self):

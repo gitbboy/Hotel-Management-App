@@ -1,8 +1,21 @@
 from database import Database
-
+from exceptions import InvalidDataError
 
 class HotelRoom:
     def __init__(self, room_id, price, type, capacity, id=None, is_free=True):
+
+        if not room_id or not isinstance(room_id, (str, int)):
+            raise InvalidDataError("Номер комнаты должен быть указан")
+
+        if price < 0:
+            raise InvalidDataError("Цена не может быть отрицательной")
+
+        if capacity <= 0:
+            raise InvalidDataError("Вместимость должна быть положительным числом")
+
+        if not type:
+            raise InvalidDataError("Тип комнаты должен быть указан")
+
         self.id = id  # первичный ключ таблицы
         self.__room_id = room_id
         self.__type = type
@@ -20,12 +33,16 @@ class HotelRoom:
         return self.__price
 
     def set_price(self, value):
+        if value < 0:
+            raise InvalidDataError("Цена не может быть отрицательной")
         self.__price = float(value)
 
     def get_capacity(self):
         return self.__capacity
 
     def set_capacity(self, value):
+        if value <= 0:
+            raise InvalidDataError("Вместимость должна быть положительным числом")
         self.__capacity = int(value)
 
     def is_free(self):

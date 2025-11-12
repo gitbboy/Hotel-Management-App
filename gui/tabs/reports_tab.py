@@ -91,7 +91,7 @@ class ReportsTab(ttk.Frame):
 
         self.period_var.trace('w', self.toggle_custom_dates)
 
-    def toggle_custom_dates(self):
+    def toggle_custom_dates(self, *args):
         """Показать/скрыть поля для произвольных дат"""
         if self.period_var.get() == "custom":
             self.custom_dates_frame.pack(pady=5)

@@ -1,13 +1,26 @@
-"""
-мне надо написать реализацию экспорта всех данных из бд в excel используя pandas в классе гуи интерфейса
- def export_report(self):
- """
+from exceptions import InvalidDataError, BookingError
 from datetime import date
 from database import Database
 
 
 class Booking:
     def __init__(self, guest_id, room_id, check_in_date, check_out_date, id=None, is_active=True):
+
+        if not guest_id:
+            raise InvalidDataError("ID гостя обязателен")
+
+        if not room_id:
+            raise InvalidDataError("ID комнаты обязателен")
+
+        if not isinstance(check_in_date, date) or not isinstance(check_out_date, date):
+            raise InvalidDataError("Даты должны быть объектами datetime.date")
+
+        if check_in_date >= check_out_date:
+            raise InvalidDataError("Дата выезда должна быть позже даты заезда")
+
+        if check_in_date < date.today():
+            raise InvalidDataError("Дата заезда не может быть в прошлом")
+
         self.id = id
         self.__guest_id = guest_id
         self.__room_id = room_id
@@ -25,12 +38,20 @@ class Booking:
         return self.__check_in_date
 
     def set_check_in_date(self, value):
+        if not isinstance(value, date):
+            raise InvalidDataError("Дата должна быть объектом datetime.date")
         self.__check_in_date = value
 
     def get_check_out_date(self):
         return self.__check_out_date
 
     def set_check_out_date(self, value):
+        if not isinstance(value, date):
+            raise InvalidDataError("Дата должна быть объектом datetime.date")
+
+        if self.__check_in_date and value <= self.__check_in_date:
+            raise InvalidDataError("Дата выезда должна быть позже даты заезда")
+
         self.__check_out_date = value
 
     def get_is_active(self):

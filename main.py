@@ -31,7 +31,7 @@ def start_window():
     window.mainloop()
 
 #test_database_connection() # тест подключения к БД
-start_window() # точка входа в программу
+start_window()
 
 
 

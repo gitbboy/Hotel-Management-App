@@ -1,9 +1,10 @@
 from database import Database
+from log_config import setup_logging
 from gui.main_window import HotelApp
 import tkinter as tk
 
 
-def test_database_connection():
+def database_connection():
     db = Database()
     print("ТЕСТ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ")
 
@@ -30,7 +31,9 @@ def start_window():
     app = HotelApp(window)
     window.mainloop()
 
-#test_database_connection() # тест подключения к БД
+
+setup_logging()
+#database_connection() # тест подключения к БД
 start_window()
 
 

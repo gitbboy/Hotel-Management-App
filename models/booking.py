@@ -1,6 +1,7 @@
-from exceptions import InvalidDataError, BookingError
+from exceptions import InvalidDataError
 from datetime import date
 from database import Database
+from log_config import get_logger
 
 
 class Booking:
@@ -18,15 +19,15 @@ class Booking:
         if check_in_date >= check_out_date:
             raise InvalidDataError("Дата выезда должна быть позже даты заезда")
 
-        if check_in_date < date.today():
-            raise InvalidDataError("Дата заезда не может быть в прошлом")
-
+        self.logger = get_logger('booking')
         self.id = id
         self.__guest_id = guest_id
         self.__room_id = room_id
         self.__check_in_date = check_in_date
         self.__check_out_date = check_out_date
         self.__is_active = is_active
+        self.logger.info(
+        f"Создано бронирование: гость {guest_id}, комната {room_id}, {check_in_date} - {check_out_date}")
 
     def get_guest_id(self):
         return self.__guest_id
@@ -39,28 +40,36 @@ class Booking:
 
     def set_check_in_date(self, value):
         if not isinstance(value, date):
+            self.logger.error(f"Попытка изменение даты заезда бронирования не в формате datetime")
             raise InvalidDataError("Дата должна быть объектом datetime.date")
         self.__check_in_date = value
+        self.logger.debug(f"Изменение даты заезда бронирования {self.id} на {value}")
 
     def get_check_out_date(self):
         return self.__check_out_date
 
     def set_check_out_date(self, value):
         if not isinstance(value, date):
+            self.logger.error(f"Попытка изменение даты заезда бронирования не в формате datetime")
             raise InvalidDataError("Дата должна быть объектом datetime.date")
 
         if self.__check_in_date and value <= self.__check_in_date:
+            self.logger.error(f"Попытка изменение даты заезда позже даты заезда")
             raise InvalidDataError("Дата выезда должна быть позже даты заезда")
 
         self.__check_out_date = value
+        self.logger.debug(f"Изменение даты выезда бронирования {self.id} на {value}")
 
     def get_is_active(self):
         return self.__is_active
 
     def set_is_active(self, value):
+        status = "активно" if value else "неактивно"
+        self.logger.info(f"Бронирование {self.id} теперь {status}")
         self.__is_active = value
 
     def save(self):
+        self.logger.info(f"Сохранение бронирования {self.id} в БД")
         db = Database()
         query = """INSERT INTO bookings 
                       (guest_id, room_id, check_in_date, check_out_date, is_active) 
@@ -68,11 +77,14 @@ class Booking:
         params = (self.__guest_id, self.__room_id, self.__check_in_date,
                  self.__check_out_date, self.__is_active)
         db.execute_query(query, params)
+        self.logger.debug("Бронирование успешно сохранено")
 
     def update(self):
         if self.id is None:
+            self.logger.error("Попытка обновить бронирование без ID")
             raise ValueError("Нельзя обновить запись без ID")
 
+        self.logger.info(f"Обновление бронирования ID {self.id} в БД")
         db = Database()
         query = """UPDATE bookings SET 
                       guest_id=%s, room_id=%s, check_in_date=%s, 
@@ -81,22 +93,29 @@ class Booking:
         params = (self.__guest_id, self.__room_id, self.__check_in_date,
                  self.__check_out_date, self.__is_active, self.id)
         db.execute_query(query, params)
+        self.logger.debug("Бронирование успешно обновлено")
 
     def delete(self):
         if self.id is None:
+            self.logger.error("Попытка удалить бронирование без ID")
             raise ValueError("Нельзя удалить запись без ID")
 
+        self.logger.warning(f"Удаление бронирования ID {self.id} из БД")
         db = Database()
         query = "DELETE FROM bookings WHERE id=%s"
         db.execute_query(query, (self.id,))
+        self.logger.info("Бронирование удалено")
 
     @classmethod
     def get_by_id(cls, id):
+        logger = get_logger('booking')
+        logger.debug(f"Поиск бронирования по ID: {id}")
         db = Database()
         query = "SELECT * FROM bookings WHERE id=%s"
         result = db.fetch_one(query, (id,))
 
         if result:
+            logger.debug(f"Бронирование с ID {id} найдено")
             return cls(
                 guest_id=result['guest_id'],
                 room_id=result['room_id'],
@@ -105,10 +124,13 @@ class Booking:
                 id=result['id'],
                 is_active=result['is_active']
             )
+        logger.warning(f"Бронирование с ID {id} не найдено")
         return None
 
     @classmethod
     def get_all(cls):
+        logger = get_logger('booking')
+        logger.debug("Запрос всех бронирований из БД")
         db = Database()
         query = "SELECT * FROM bookings"
         results = db.fetch_all(query)
@@ -123,10 +145,13 @@ class Booking:
                 id=result['id'],
                 is_active=result['is_active']
             ))
+        logger.info(f"Получено {len(bookings)} бронирований")
         return bookings
 
     @classmethod
     def get_active_bookings(cls):
+        logger = get_logger('booking')
+        logger.debug("Запрос активных бронирований из БД")
         db = Database()
         query = "SELECT * FROM bookings WHERE is_active = TRUE"
         results = db.fetch_all(query)
@@ -141,4 +166,5 @@ class Booking:
                 id=result['id'],
                 is_active=result['is_active']
             ))
+        logger.info(f"Найдено {len(bookings)} активных бронирований")
         return bookings

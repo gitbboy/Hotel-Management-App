@@ -4,7 +4,6 @@ import os
 
 
 def setup_logging():
-    """Настройка логирования для приложения"""
     # Создание папки + файлов
     log_dir = "logs"
     if not os.path.exists(log_dir):

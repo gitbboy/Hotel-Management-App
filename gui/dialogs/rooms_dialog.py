@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from models import HotelRoom
+from exceptions import InvalidDataError, RoomNotFoundError
+
 
 class RoomDialog:
     def __init__(self, parent, title, room=None):
@@ -66,10 +68,7 @@ class RoomDialog:
         tk.Button(buttons_frame, text="Отмена",
                   command=self.dialog.destroy, width=15).pack(side='left', padx=10)
 
-        # Привязка события Enter для быстрого сохранения
         self.dialog.bind('<Return>', lambda event: self.save_room())
-
-        # Фокус на первом поле
         self.number_entry.focus_set()
 
     def _fill_room_data(self):
@@ -80,6 +79,32 @@ class RoomDialog:
         if hasattr(self, 'status_var'):
             self.status_var.set(self.room.is_free())
 
+    def _validate_number_format(self, number):
+        """Валидация формата номера комнаты"""
+        if not number.isdigit():
+            raise InvalidDataError("Номер комнаты должен содержать только цифры")
+
+        if len(number) != 3:
+            raise InvalidDataError("Номер комнаты должен состоять из 3 цифр")
+
+        floor_number = int(number[0])
+        if floor_number not in [1, 2, 3, 4, 5]:
+            raise InvalidDataError("Номер комнаты должен начинаться с номера этажа (1-5)")
+
+        room_number = int(number[1:])
+        if room_number < 1 or room_number > 50:
+            raise InvalidDataError("Номер комнаты на этаже должен быть от 01 до 50")
+
+        return number
+
+    def _check_room_unique(self, number):
+        """Проверка уникальности номера комнаты"""
+        if not self.room:
+            existing_rooms = HotelRoom.get_all()
+            for room in existing_rooms:
+                if room.get_number() == number:
+                    raise InvalidDataError(f"Комната с номером {number} уже существует")
+
     def _validate_fields(self):
         number = self.number_entry.get().strip()
         room_type = self.type_combobox.get().strip()
@@ -88,34 +113,47 @@ class RoomDialog:
 
         # Проверка обязательных полей
         if not all([number, room_type, price, capacity]):
-            raise ValueError("Все поля обязательны для заполнения")
+            raise InvalidDataError("Все поля обязательны для заполнения")
 
-        # Валидация номера
-        if not number.isdigit():
-            raise ValueError("Номер комнаты должен содержать только цифры")
+        # Валидация номера комнаты
+        validated_number = self._validate_number_format(number)
+
+        # Проверка уникальности (только при создании)
+        self._check_room_unique(validated_number)
+
+        # Валидация типа комнаты
+        valid_types = ["Стандарт", "Люкс", "Полулюкс", "Семейный", "Бизнес"]
+        if room_type not in valid_types:
+            raise InvalidDataError(f"Тип комнаты должен быть одним из: {', '.join(valid_types)}")
 
         # Валидация цены
         try:
             price_value = float(price)
             if price_value <= 0:
-                raise ValueError("Цена должна быть положительным числом")
+                raise InvalidDataError("Цена должна быть положительным числом")
+            if price_value > 100000:  # Максимальная цена 100 000 за ночь
+                raise InvalidDataError("Цена не может превышать 100 000 за ночь")
         except ValueError:
-            raise ValueError("Цена должна быть числом")
+            raise InvalidDataError("Цена должна быть числом")
 
         # Валидация вместимости
         if not capacity.isdigit() or int(capacity) <= 0:
-            raise ValueError("Вместимость должна быть положительным целым числом")
+            raise InvalidDataError("Вместимость должна быть положительным целым числом")
+
+        capacity_value = int(capacity)
+        if capacity_value > 5:
+            raise InvalidDataError("Вместимость не может превышать 5 человек")
 
         return {
-            'number': number,
+            'number': validated_number,
             'type': room_type,
             'price': price_value,
-            'capacity': int(capacity),
+            'capacity': capacity_value,
             'is_free': self.status_var.get() if hasattr(self, 'status_var') else True
         }
 
     def save_room(self):
-        """Сохранение номера"""
+        """Сохранение номера с обработкой пользовательских исключений"""
         try:
             # Валидация данных
             validated_data = self._validate_fields()
@@ -130,29 +168,46 @@ class RoomDialog:
             self.result = True
             self.dialog.destroy()
 
-        except Exception as e:
+        except InvalidDataError as e:
+            # Показываем пользовательские ошибки валидации
+            messagebox.showerror("Ошибка данных", str(e))
+        except RoomNotFoundError as e:
+            # Ошибка, если комната не найдена при обновлении
             messagebox.showerror("Ошибка", str(e))
+        except Exception as e:
+            # Общие ошибки
+            messagebox.showerror("Ошибка", f"Неизвестная ошибка: {str(e)}")
 
     def _create_room(self, data):
-        room = HotelRoom(
-            room_id=data['number'],
-            type=data['type'],
-            price=data['price'],
-            capacity=data['capacity'],
-            is_free=data['is_free']
-        )
-        room.save()
-        messagebox.showinfo("Успех", f"Номер {data['number']} добавлен!")
+        """Создание новой комнаты"""
+        try:
+            room = HotelRoom(
+                room_id=data['number'],
+                type=data['type'],
+                price=data['price'],
+                capacity=data['capacity'],
+                is_free=data['is_free']
+            )
+            room.save()
+            messagebox.showinfo("Успех", f"Номер {data['number']} успешно добавлен!")
+        except Exception as e:
+            # Преобразуем общие исключения в пользовательские
+            raise InvalidDataError(f"Ошибка при создании комнаты: {str(e)}")
 
     def _update_room(self, data):
         """Обновление данных номера"""
-        self.room.set_free(data['is_free'])
-        # Для других полей нужны сеттеры - добавим их в класс HotelRoom
-        # Временно используем прямой доступ или добавим сеттеры
-        self.room._HotelRoom__room_id = data['number']
-        self.room._HotelRoom__type = data['type']
-        self.room._HotelRoom__price = data['price']
-        self.room._HotelRoom__capacity = data['capacity']
+        try:
+            # Обновляем данные комнаты
+            self.room.set_free(data['is_free'])
 
-        self.room.update()
-        messagebox.showinfo("Успех", "Данные номера обновлены!")
+            # Для других полей нужны сеттеры - временно используем прямой доступ
+            # В идеале нужно добавить сеттеры в класс HotelRoom
+            self.room._HotelRoom__room_id = data['number']
+            self.room._HotelRoom__type = data['type']
+            self.room._HotelRoom__price = data['price']
+            self.room._HotelRoom__capacity = data['capacity']
+
+            self.room.update()
+            messagebox.showinfo("Успех", "Данные номера успешно обновлены!")
+        except Exception as e:
+            raise InvalidDataError(f"Ошибка при обновлении комнаты: {str(e)}")

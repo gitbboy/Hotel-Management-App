@@ -1,5 +1,6 @@
 import pytest
 from datetime import date
+from database import Database
 from unittest.mock import Mock
 from exceptions import RoomNotFoundError, BookingError, InvalidDataError
 
@@ -8,6 +9,28 @@ from models import Person, Employee, Guest
 from models import HotelRoom
 from models import Booking
 from models import Hotel
+
+
+def test_database_connection():
+    db = Database()
+    try:
+        result = db.fetch_one("SELECT NOW()")
+        if result:
+            print(f"Connection success. Время сервера: {result['NOW()']}")
+
+            employees = db.fetch_all("SELECT * FROM employees")
+            print("\nПервые 3 записи из БД (сотрудники)")
+            for i in range(3):
+                print(employees[i])
+            return True
+        else:
+            print("Не удалось выполнить тестовый запрос")
+            return False
+    except Exception as e:
+        print(f"Ошибка подключения: {e}")
+        return False
+
+# test_database_connection() # тест подключения к БД
 
 class TestPerson:
     def test_person_creation(self):

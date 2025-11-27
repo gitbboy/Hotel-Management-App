@@ -2,6 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from models import Booking, Guest, HotelRoom
 from datetime import datetime
+from exceptions import (
+    InvalidBookingDataError,
+    BookingDateError,
+    RoomNotAvailableError,
+    PersonNotFoundError,
+    InvalidPersonDataError
+)
 
 
 class BookingDialog:
@@ -57,7 +64,7 @@ class BookingDialog:
         self.checkout_entry.insert(0, tomorrow.strftime("%Y-%m-%d"))
         self.checkout_entry.grid(row=5, column=0, columnspan=2, pady=5, padx=5, sticky='ew')
 
-        # Статус (только для редактирования)
+        # Статус
         if self.booking:
             tk.Label(fields_frame, text="Статус:").grid(row=6, column=0, sticky='w', pady=5)
             self.status_var = tk.BooleanVar()
@@ -65,10 +72,8 @@ class BookingDialog:
                                                 variable=self.status_var)
             self.status_check.grid(row=6, column=1, pady=5, padx=5, sticky='w')
 
-        # Настройка веса колонок для правильного растяжения
         fields_frame.columnconfigure(1, weight=1)
 
-        # Заполнение данных если редактирование
         if self.booking:
             self._fill_booking_data()
 
@@ -81,14 +86,10 @@ class BookingDialog:
         tk.Button(buttons_frame, text="Отмена",
                   command=self.dialog.destroy, width=15).pack(side='left', padx=10)
 
-        # Привязка события Enter для быстрого сохранения
         self.dialog.bind('<Return>', lambda event: self.save_booking())
-
-        # Фокус на первом поле
         self.guest_combobox.focus_set()
 
     def _fill_booking_data(self):
-        """Заполняет поля данными бронирования для редактирования"""
         guest = Guest.get_by_id(self.booking.get_guest_id())
         room = HotelRoom.get_by_id(self.booking.get_room_id())
 
@@ -107,15 +108,13 @@ class BookingDialog:
             self.status_var.set(self.booking.get_is_active())
 
     def _validate_fields(self):
-        """Валидация полей ввода"""
         guest_name = self.guest_combobox.get().strip()
         room_info = self.room_combobox.get().strip()
         checkin = self.checkin_entry.get().strip()
         checkout = self.checkout_entry.get().strip()
 
-        # Проверка обязательных полей
         if not all([guest_name, room_info, checkin, checkout]):
-            raise ValueError("Все поля обязательны для заполнения")
+            raise InvalidBookingDataError("Все поля обязательны для заполнения")
 
         # Поиск гостя
         guest = None
@@ -125,9 +124,8 @@ class BookingDialog:
                 break
 
         if not guest:
-            raise ValueError("Гость не найден")
+            raise PersonNotFoundError(identifier=guest_name)
 
-        # Поиск номера
         room_number = room_info.split(' ')[0]
         room = None
         for r in self.rooms:
@@ -136,21 +134,20 @@ class BookingDialog:
                 break
 
         if not room:
-            raise ValueError("Номер не найден или недоступен")
+            raise RoomNotAvailableError(room_number, "номер не найден или недоступен")
 
-        # Валидация дат
         try:
             checkin_date = datetime.strptime(checkin, "%Y-%m-%d").date()
             checkout_date = datetime.strptime(checkout, "%Y-%m-%d").date()
 
             if checkin_date >= checkout_date:
-                raise ValueError("Дата выезда должна быть позже даты заезда")
+                raise BookingDateError("Дата выезда должна быть позже даты заезда")
 
             if checkin_date < datetime.now().date():
-                raise ValueError("Дата заезда не может быть в прошлом")
+                raise BookingDateError("Дата заезда не может быть в прошлом")
 
         except ValueError:
-            raise ValueError("Даты должны быть в формате ГГГГ-ММ-ДД")
+            raise InvalidBookingDataError("Даты должны быть в формате ГГГГ-ММ-ДД", "dates")
 
         return {
             'guest_id': guest.id,
@@ -161,26 +158,23 @@ class BookingDialog:
         }
 
     def save_booking(self):
-        """Сохранение бронирования"""
         try:
-            # Валидация данных
             validated_data = self._validate_fields()
 
             if self.booking:
-                # Обновление существующего бронирования
                 self._update_booking(validated_data)
             else:
-                # Создание нового бронирования
                 self._create_booking(validated_data)
 
             self.result = True
             self.dialog.destroy()
 
+        except (InvalidBookingDataError, BookingDateError, RoomNotAvailableError, PersonNotFoundError) as e:
+            messagebox.showerror("Ошибка данных", str(e))
         except Exception as e:
-            messagebox.showerror("Ошибка", str(e))
+            messagebox.showerror("Ошибка", f"Неизвестная ошибка: {str(e)}")
 
     def _create_booking(self, data):
-        """Создание нового бронирования"""
         booking = Booking(
             guest_id=data['guest_id'],
             room_id=data['room_id'],
@@ -199,11 +193,9 @@ class BookingDialog:
         messagebox.showinfo("Успех", "Бронирование создано!")
 
     def _update_booking(self, data):
-        """Обновление данных бронирования"""
         self.booking.set_check_in_date(data['checkin'])
         self.booking.set_check_out_date(data['checkout'])
         self.booking.set_is_active(data['is_active'])
 
-        # Сохраняем изменения
         self.booking.update()
         messagebox.showinfo("Успех", "Данные бронирования обновлены!")

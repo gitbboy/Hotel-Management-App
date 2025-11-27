@@ -1,7 +1,9 @@
+# employee_dialog.py
 import tkinter as tk
 from tkinter import messagebox
 from models import Employee
 from datetime import datetime
+from exceptions import InvalidPersonDataError, PersonAlreadyExistsError
 
 
 class EmployeeDialog:
@@ -53,11 +55,8 @@ class EmployeeDialog:
         tk.Label(fields_frame, text="(ГГГГ-ММ-ДД)").grid(row=6, column=1, sticky='w', pady=5)
         self.date_entry = tk.Entry(fields_frame, width=25)
         self.date_entry.grid(row=7, column=0, columnspan=2, pady=5, padx=5, sticky='ew')
-
-        # Настройка веса колонок для правильного растяжения
         fields_frame.columnconfigure(1, weight=1)
 
-        # Заполнение данных если редактирование
         if self.employee:
             self._fill_employee_data()
         else:
@@ -72,17 +71,14 @@ class EmployeeDialog:
         tk.Button(buttons_frame, text="Отмена",
                   command=self.dialog.destroy, width=15).pack(side='left', padx=10)
 
-        # Привязка события Enter для быстрого сохранения
         self.dialog.bind('<Return>', lambda event: self.save_employee())
 
-        # Фокус на первом поле
         if self.employee:
             self.surname_entry.focus_set()
         else:
             self.name_entry.focus_set()
 
     def _fill_employee_data(self):
-        """Заполняет поля данными сотрудника для редактирования"""
         self.surname_entry.insert(0, self.employee.get_surname())
         self.name_entry.insert(0, self.employee.get_name())
         self.patronymic_entry.insert(0, self.employee.get_patronymic() or "")
@@ -92,7 +88,6 @@ class EmployeeDialog:
         self.date_entry.insert(0, self.employee.get_date_of_employment())
 
     def _validate_fields(self):
-        """Валидация полей ввода"""
         name = self.name_entry.get().strip()
         surname = self.surname_entry.get().strip()
         position = self.position_entry.get().strip()
@@ -103,39 +98,33 @@ class EmployeeDialog:
 
         # Проверка обязательных полей
         if not all([name, surname, position, phone, email, date_employed]):
-            raise ValueError("Все поля, кроме отчества, обязательны для заполнения")
+            raise InvalidPersonDataError("Все поля, кроме отчества, обязательны для заполнения")
 
-        # Валидация имени
         if len(name) < 2:
-            raise ValueError("Имя не может быть короче двух символов")
+            raise InvalidPersonDataError("Имя не может быть короче двух символов", "name")
 
         if not name.replace(' ', '').isalpha():
-            raise ValueError("Имя может содержать только буквы и пробелы")
+            raise InvalidPersonDataError("Имя может содержать только буквы и пробелы", "name")
 
-        # Валидация фамилии
         if len(surname) < 2:
-            raise ValueError("Фамилия не может быть короче двух символов")
+            raise InvalidPersonDataError("Фамилия не может быть короче двух символов", "surname")
 
         if not surname.replace(' ', '').isalpha():
-            raise ValueError("Фамилия может содержать только буквы и пробелы")
+            raise InvalidPersonDataError("Фамилия может содержать только буквы и пробелы", "surname")
 
-        # Валидация отчества
         if patronymic and not patronymic.replace(' ', '').isalpha():
-            raise ValueError("Отчество может содержать только буквы и пробелы")
+            raise InvalidPersonDataError("Отчество может содержать только буквы и пробелы", "patronymic")
 
-        # Валидация email
         if '@' not in email or '.' not in email:
-            raise ValueError("Проверьте правильность ввода Email")
+            raise InvalidPersonDataError("Проверьте правильность ввода Email", "email")
 
-        # Валидация телефона
         if len(phone) < 5 or not any(c.isdigit() for c in phone):
-            raise ValueError("Проверьте правильность ввода номера телефона")
+            raise InvalidPersonDataError("Проверьте правильность ввода номера телефона", "phone")
 
-        # Валидация даты
         try:
             datetime.strptime(date_employed, "%Y-%m-%d")
         except ValueError:
-            raise ValueError("Дата должна быть в формате ГГГГ-ММ-ДД")
+            raise InvalidPersonDataError("Дата должна быть в формате ГГГГ-ММ-ДД", "date_employed")
 
         return {
             'name': name,
@@ -148,26 +137,23 @@ class EmployeeDialog:
         }
 
     def save_employee(self):
-        """Сохранение сотрудника"""
         try:
-            # Валидация данных
             validated_data = self._validate_fields()
 
             if self.employee:
-                # Обновление существующего сотрудника
                 self._update_employee(validated_data)
             else:
-                # Создание нового сотрудника
                 self._create_employee(validated_data)
 
             self.result = True
             self.dialog.destroy()
 
+        except (InvalidPersonDataError, PersonAlreadyExistsError) as e:
+            messagebox.showerror("Ошибка данных", str(e))
         except Exception as e:
-            messagebox.showerror("Ошибка", str(e))
+            messagebox.showerror("Ошибка", f"Неизвестная ошибка: {str(e)}")
 
     def _create_employee(self, data):
-        """Создание нового сотрудника"""
         employee = Employee(
             name=data['name'],
             surname=data['surname'],
@@ -181,7 +167,6 @@ class EmployeeDialog:
         messagebox.showinfo("Успех", f"Сотрудник {employee.full_name()} добавлен!")
 
     def _update_employee(self, data):
-        """Обновление данных сотрудника"""
         self.employee.set_name(data['name'])
         self.employee.set_surname(data['surname'])
         self.employee.set_patronymic(data['patronymic'])
@@ -190,12 +175,9 @@ class EmployeeDialog:
         self.employee.set_mail(data['email'])
         self.employee.set_date_of_employment(data['date_employed'])
 
-        # Сохраняем изменения
         self.employee.update()
         messagebox.showinfo("Успех", "Данные сотрудника обновлены!")
 
-
-# Дополнительный класс для диалога подтверждения удаления
 class DeleteEmployeeDialog:
     def __init__(self, parent, employee_name):
         self.parent = parent
@@ -212,7 +194,6 @@ class DeleteEmployeeDialog:
         self.dialog.wait_window()
 
     def create_widgets(self, employee_name):
-        # Сообщение
         message_frame = tk.Frame(self.dialog)
         message_frame.pack(pady=20, padx=20, fill='both', expand=True)
 
@@ -223,7 +204,6 @@ class DeleteEmployeeDialog:
         tk.Label(message_frame, text="Это действие нельзя отменить.",
                  fg='red', wraplength=350).pack(pady=5)
 
-        # Кнопки
         buttons_frame = tk.Frame(self.dialog)
         buttons_frame.pack(pady=10)
 

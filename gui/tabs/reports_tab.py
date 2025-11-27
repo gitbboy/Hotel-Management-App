@@ -28,7 +28,7 @@ class ReportsTab(ttk.Frame):
         ttk.Button(reports_btn_frame, text="Резервное копирование БД",
                    command=self.recovery_report, width=20).pack(side='left', padx=5)
 
-        # Фрейм для фильтров (будет показываться для некоторых отчетов)
+        # Фрейм для фильтров
         self.filters_frame = ttk.Frame(self)
         self.filters_frame.pack(pady=5, fill='x')
 
@@ -53,7 +53,7 @@ class ReportsTab(ttk.Frame):
             widget.destroy()
 
     def setup_date_filters(self):
-        """Настройка фильтров по дате"""
+        """Настройка фильтров по дате - УЛУЧШЕННАЯ ВЕРСИЯ"""
         self.clear_filters()
 
         # Период отчета
@@ -63,16 +63,18 @@ class ReportsTab(ttk.Frame):
         ttk.Label(period_frame, text="Период отчета:").pack(side='left', padx=5)
 
         self.period_var = tk.StringVar(value="month")
-        ttk.Radiobutton(period_frame, text="За месяц",
-                        variable=self.period_var, value="month").pack(side='left', padx=5)
-        ttk.Radiobutton(period_frame, text="За квартал",
-                        variable=self.period_var, value="quarter").pack(side='left', padx=5)
-        ttk.Radiobutton(period_frame, text="За год",
-                        variable=self.period_var, value="year").pack(side='left', padx=5)
-        ttk.Radiobutton(period_frame, text="Произвольный",
-                        variable=self.period_var, value="custom").pack(side='left', padx=5)
+        periods = [
+            ("За месяц", "month"),
+            ("За квартал", "quarter"),
+            ("За год", "year"),
+            ("Произвольный", "custom")
+        ]
 
-        # Произвольные даты (скрыты по умолчанию)
+        for text, value in periods:
+            ttk.Radiobutton(period_frame, text=text,
+                            variable=self.period_var, value=value).pack(side='left', padx=5)
+
+        # Фрейм для произвольных дат
         self.custom_dates_frame = ttk.Frame(self.filters_frame)
 
         ttk.Label(self.custom_dates_frame, text="С:").pack(side='left', padx=5)
@@ -85,52 +87,92 @@ class ReportsTab(ttk.Frame):
         self.end_date_entry.pack(side='left', padx=5)
         self.end_date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
 
-        # Кнопка применения фильтров
+        # Подсказки для пользователя
+        tip_frame = ttk.Frame(self.filters_frame)
+        tip_frame.pack(pady=2)
+        ttk.Label(tip_frame, text="Формат даты: ГГГГ-ММ-ДД", foreground="gray").pack()
+
+        # Кнопка применения
         ttk.Button(self.filters_frame, text="Применить фильтры",
                    command=self.apply_filters).pack(pady=5)
 
         self.period_var.trace('w', self.toggle_custom_dates)
+        self.toggle_custom_dates()  # Инициализация видимости
 
     def toggle_custom_dates(self, *args):
         """Показать/скрыть поля для произвольных дат"""
-        if self.period_var.get() == "custom":
-            self.custom_dates_frame.pack(pady=5)
-        else:
-            self.custom_dates_frame.pack_forget()
+        if hasattr(self, 'custom_dates_frame'):
+            if self.period_var.get() == "custom":
+                self.custom_dates_frame.pack(pady=5)
+            else:
+                self.custom_dates_frame.pack_forget()
 
     def apply_filters(self):
-        """Применение фильтров и обновление отчета"""
-        if self.current_report_type == "occupancy":
-            self.occupancy_report()
-        elif self.current_report_type == "financial":
-            self.financial_report()
-        elif self.current_report_type == "guests":
-            self.guests_report()
+        """Применение фильтров и обновление отчета - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        if not self.current_report_type:
+            return
+
+        try:
+            # Получаем диапазон дат перед обновлением отчета
+            start_date, end_date = self.get_date_range()
+
+            if self.current_report_type == "occupancy":
+                self.update_occupancy_report(start_date, end_date)
+            elif self.current_report_type == "financial":
+                self.update_financial_report(start_date, end_date)
+            elif self.current_report_type == "guests":
+                self.update_guests_report(start_date, end_date)
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка применения фильтров: {str(e)}")
 
     def get_date_range(self):
-        """Получение диапазона дат на основе выбранного периода"""
+        """Получение диапазона дат на основе выбранного периода - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
         today = datetime.now().date()
 
-        if self.period_var.get() == "month":
-            start_date = today.replace(day=1)
-            end_date = today
-        elif self.period_var.get() == "quarter":
-            quarter = (today.month - 1) // 3 + 1
-            start_month = 3 * (quarter - 1) + 1
-            start_date = today.replace(month=start_month, day=1)
-            end_date = today
-        elif self.period_var.get() == "year":
-            start_date = today.replace(month=1, day=1)
-            end_date = today
-        else:  # custom
-            try:
+        try:
+            if self.period_var.get() == "month":
+                # Первый день текущего месяца
+                start_date = today.replace(day=1)
+                end_date = today
+            elif self.period_var.get() == "quarter":
+                # Первый день текущего квартала
+                quarter = (today.month - 1) // 3
+                start_month = 3 * quarter + 1
+                start_date = today.replace(month=start_month, day=1)
+                end_date = today
+            elif self.period_var.get() == "year":
+                # Первый день текущего года
+                start_date = today.replace(month=1, day=1)
+                end_date = today
+            else:  # custom
                 start_date = datetime.strptime(self.start_date_entry.get(), "%Y-%m-%d").date()
                 end_date = datetime.strptime(self.end_date_entry.get(), "%Y-%m-%d").date()
-            except ValueError:
-                messagebox.showerror("Ошибка", "Неверный формат даты. Используйте ГГГГ-ММ-ДД")
-                return today.replace(day=1), today
 
-        return start_date, end_date
+                # Валидация дат
+                self.validate_date_range(start_date, end_date)
+
+            return start_date, end_date
+
+        except ValueError as e:
+            messagebox.showerror("Ошибка", f"Неверный формат даты: {str(e)}")
+            return today.replace(day=1), today
+        except Exception as e:
+            messagebox.showerror("Ошибка", str(e))
+            return today.replace(day=1), today
+
+    def validate_date_range(self, start_date, end_date):
+        """Проверка корректности диапазона дат"""
+        if start_date > end_date:
+            raise ValueError("Начальная дата не может быть больше конечной")
+
+        if start_date > datetime.now().date():
+            raise ValueError("Начальная дата не может быть в будущем")
+
+        if (end_date - start_date).days > 1825:
+            raise ValueError("Период не может превышать 5 лет")
+
+        return True
 
     def clear_report(self):
         """Очистка отчета"""
@@ -145,33 +187,45 @@ class ReportsTab(ttk.Frame):
         self.clear_filters()
         self.current_report_type = None
 
+    def setup_treeview_columns(self, columns_config):
+        """Универсальная настройка колонок Treeview"""
+        columns = [col[0] for col in columns_config]
+        self.report_tree['columns'] = columns
+
+        for col_id, heading, width in columns_config:
+            self.report_tree.column(col_id, width=width, minwidth=width - 20)
+            self.report_tree.heading(col_id, text=heading)
+
     def occupancy_report(self):
-        """Отчет по занятости номеров"""
+        """Отчет по занятости номеров - УЛУЧШЕННАЯ ВЕРСИЯ"""
         self.clear_report()
-        self.current_report_type = "occupancy"  # УСТАНОВКА ТИПА ОТЧЕТА
+        self.current_report_type = "occupancy"
         self.setup_date_filters()
 
         # Настройка колонок
-        self.report_tree['columns'] = ('room_number', 'room_type', 'total_days', 'occupied_days',
-                                       'occupancy_rate', 'revenue')
+        columns_config = [
+            ('room_number', 'Номер', 100),
+            ('room_type', 'Тип', 120),
+            ('total_days', 'Всего дней', 100),
+            ('occupied_days', 'Занято дней', 100),
+            ('occupancy_rate', 'Загрузка %', 100),
+            ('revenue', 'Доход', 100)
+        ]
 
-        self.report_tree.column('room_number', width=100, minwidth=80)
-        self.report_tree.column('room_type', width=120, minwidth=100)
-        self.report_tree.column('total_days', width=100, minwidth=80)
-        self.report_tree.column('occupied_days', width=100, minwidth=80)
-        self.report_tree.column('occupancy_rate', width=100, minwidth=80)
-        self.report_tree.column('revenue', width=100, minwidth=80)
+        self.setup_treeview_columns(columns_config)
+        self.apply_filters()  # Автоматически применяем фильтры после настройки
 
-        self.report_tree.heading('room_number', text='Номер')
-        self.report_tree.heading('room_type', text='Тип')
-        self.report_tree.heading('total_days', text='Всего дней')
-        self.report_tree.heading('occupied_days', text='Занято дней')
-        self.report_tree.heading('occupancy_rate', text='Загрузка %')
-        self.report_tree.heading('revenue', text='Доход')
+    def update_occupancy_report(self, start_date, end_date):
+        """Обновление отчета по занятости с фильтрами"""
+        # Очищаем предыдущие данные
+        for item in self.report_tree.get_children():
+            self.report_tree.delete(item)
 
         try:
-            start_date, end_date = self.get_date_range()
             total_days = (end_date - start_date).days + 1
+            if total_days <= 0:
+                messagebox.showwarning("Предупреждение", "Некорректный период дат")
+                return
 
             rooms = HotelRoom.get_all()
             bookings = Booking.get_all()
@@ -207,38 +261,40 @@ class ReportsTab(ttk.Frame):
                 ))
 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось сформировать отчет по занятости: {str(e)}")
+            messagebox.showerror("Ошибка", f"Не удалось обновить отчет по занятости: {str(e)}")
 
     def financial_report(self):
+        """Финансовый отчет - УЛУЧШЕННАЯ ВЕРСИЯ"""
         self.clear_report()
         self.current_report_type = "financial"
         self.setup_date_filters()
 
         # Настройка колонок
-        self.report_tree['columns'] = ('period', 'total_revenue', 'room_revenue',
-                                       'avg_occupancy', 'total_bookings')
+        columns_config = [
+            ('period', 'Период', 150),
+            ('room_revenue', 'Доход от номеров', 120),
+            ('avg_occupancy', 'Средняя загрузка %', 120),
+            ('total_bookings', 'Всего бронирований', 120)
+        ]
 
-        self.report_tree.column('period', width=150, minwidth=120)
-        self.report_tree.column('total_revenue', width=120, minwidth=100)
-        self.report_tree.column('room_revenue', width=120, minwidth=100)
-        self.report_tree.column('avg_occupancy', width=120, minwidth=100)
-        self.report_tree.column('total_bookings', width=120, minwidth=100)
+        self.setup_treeview_columns(columns_config)
+        self.apply_filters()
 
-        self.report_tree.heading('period', text='Период')
-        self.report_tree.heading('total_revenue', text='Общий доход')
-        self.report_tree.heading('room_revenue', text='Доход от номеров')
-        self.report_tree.heading('avg_occupancy', text='Средняя загрузка %')
-        self.report_tree.heading('total_bookings', text='Всего бронирований')
+    def update_financial_report(self, start_date, end_date):
+        """Обновление финансового отчета с фильтрами"""
+        for item in self.report_tree.get_children():
+            self.report_tree.delete(item)
 
         try:
-            start_date, end_date = self.get_date_range()
             total_days = (end_date - start_date).days + 1
+            if total_days <= 0:
+                messagebox.showwarning("Предупреждение", "Некорректный период дат")
+                return
 
             rooms = HotelRoom.get_all()
             bookings = Booking.get_all()
 
             # Общая статистика
-            total_revenue = 0
             room_revenue = 0
             total_occupied_days = 0
             total_possible_days = len(rooms) * total_days
@@ -259,7 +315,6 @@ class ReportsTab(ttk.Frame):
                     if room:
                         booking_revenue = overlap_days * room.get_price()
                         room_revenue += booking_revenue
-                        total_revenue += booking_revenue
                         total_occupied_days += overlap_days
                         completed_bookings += 1
 
@@ -269,39 +324,39 @@ class ReportsTab(ttk.Frame):
 
             self.report_tree.insert('', 'end', values=(
                 period_label,
-                f"{total_revenue:.2f}",
                 f"{room_revenue:.2f}",
                 f"{avg_occupancy:.1f}%",
                 completed_bookings
             ))
 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось сформировать финансовый отчет: {str(e)}")
+            messagebox.showerror("Ошибка", f"Не удалось обновить финансовый отчет: {str(e)}")
 
     def guests_report(self):
+        """Отчет по гостям - УЛУЧШЕННАЯ ВЕРСИЯ"""
         self.clear_report()
         self.current_report_type = "guests"
         self.setup_date_filters()
 
-        self.report_tree['columns'] = ('guest_name', 'phone', 'total_bookings',
-                                       'total_nights', 'last_booking', 'total_spent')
+        columns_config = [
+            ('guest_name', 'Гость', 150),
+            ('phone', 'Телефон', 120),
+            ('total_bookings', 'Бронирований', 100),
+            ('total_nights', 'Ночей всего', 100),
+            ('last_booking', 'Последнее', 100),
+            ('total_spent', 'Потрачено', 100)
+        ]
 
-        self.report_tree.column('guest_name', width=150, minwidth=120)
-        self.report_tree.column('phone', width=120, minwidth=100)
-        self.report_tree.column('total_bookings', width=100, minwidth=80)
-        self.report_tree.column('total_nights', width=100, minwidth=80)
-        self.report_tree.column('last_booking', width=100, minwidth=80)
-        self.report_tree.column('total_spent', width=100, minwidth=80)
+        self.setup_treeview_columns(columns_config)
+        self.apply_filters()
 
-        self.report_tree.heading('guest_name', text='Гость')
-        self.report_tree.heading('phone', text='Телефон')
-        self.report_tree.heading('total_bookings', text='Бронирований')
-        self.report_tree.heading('total_nights', text='Ночей всего')
-        self.report_tree.heading('last_booking', text='Последнее')
-        self.report_tree.heading('total_spent', text='Потрачено')
+    def update_guests_report(self, start_date, end_date):
+        """Обновление отчета по гостям с фильтрами"""
+        for item in self.report_tree.get_children():
+            self.report_tree.delete(item)
 
         try:
-            start_date, end_date = self.get_date_range()
+            self.validate_date_range(start_date, end_date)
 
             guests = Guest.get_all()
             bookings = Booking.get_all()
@@ -319,19 +374,26 @@ class ReportsTab(ttk.Frame):
                 last_booking_date = None
 
                 for booking in guest_bookings:
+                    # Для last_booking_date смотрим все бронирования
+                    booking_date = booking.get_check_in_date()
+                    if not last_booking_date or booking_date > last_booking_date:
+                        last_booking_date = booking_date
+
+                    # Для ночей и денег - только те, что в периоде
                     if (self.dates_overlap(start_date, end_date,
                                            booking.get_check_in_date(),
                                            booking.get_check_out_date())):
 
-                        nights = (booking.get_check_out_date() - booking.get_check_in_date()).days
+                        nights = self.calculate_overlap_days(
+                            start_date, end_date,
+                            booking.get_check_in_date(),
+                            booking.get_check_out_date()
+                        )
                         total_nights += nights
 
                         room = HotelRoom.get_by_id(booking.get_room_id())
                         if room:
                             total_spent += nights * room.get_price()
-
-                        if not last_booking_date or booking.get_check_in_date() > last_booking_date:
-                            last_booking_date = booking.get_check_in_date()
 
                 last_booking_str = last_booking_date.strftime("%d.%m.%Y") if last_booking_date else "Нет"
 
@@ -345,37 +407,24 @@ class ReportsTab(ttk.Frame):
                 ))
 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось сформировать отчет по гостям: {str(e)}")
-
-    @staticmethod
-    def recovery_report():
-        try:
-            ExportService.extract_excel_all()
-        except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось экспортировать данные: {str(e)}")
+            messagebox.showerror("Ошибка", f"Не удалось обновить отчет по гостям: {str(e)}")
 
     def staff_report(self):
-        """Отчет по сотрудникам"""
+        """Отчет по сотрудникам - УЛУЧШЕННАЯ ВЕРСИЯ"""
         self.clear_report()
-        self.current_report_type = "staff"  # УСТАНОВКА ТИПА ОТЧЕТА
-        self.clear_filters()  # Для этого отчета фильтры не нужны
+        self.current_report_type = "staff"
+        self.clear_filters()
 
-        self.report_tree['columns'] = ('employee_name', 'position', 'phone', 'email',
-                                       'hire_date', 'experience_months')
+        columns_config = [
+            ('employee_name', 'Сотрудник', 150),
+            ('position', 'Должность', 120),
+            ('phone', 'Телефон', 120),
+            ('email', 'Email', 150),
+            ('hire_date', 'Дата приема', 100),
+            ('experience_months', 'Стаж (мес.)', 100)
+        ]
 
-        self.report_tree.column('employee_name', width=150, minwidth=120)
-        self.report_tree.column('position', width=120, minwidth=100)
-        self.report_tree.column('phone', width=120, minwidth=100)
-        self.report_tree.column('email', width=150, minwidth=120)
-        self.report_tree.column('hire_date', width=100, minwidth=80)
-        self.report_tree.column('experience_months', width=100, minwidth=80)
-
-        self.report_tree.heading('employee_name', text='Сотрудник')
-        self.report_tree.heading('position', text='Должность')
-        self.report_tree.heading('phone', text='Телефон')
-        self.report_tree.heading('email', text='Email')
-        self.report_tree.heading('hire_date', text='Дата приема')
-        self.report_tree.heading('experience_months', text='Стаж (мес.)')
+        self.setup_treeview_columns(columns_config)
 
         try:
             employees = Employee.get_all()
@@ -400,6 +449,15 @@ class ReportsTab(ttk.Frame):
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось сформировать отчет по сотрудникам: {str(e)}")
 
+    @staticmethod
+    def recovery_report():
+        """Резервное копирование БД"""
+        try:
+            ExportService.extract_excel_all()
+            messagebox.showinfo("Успех", "Резервное копирование выполнено успешно")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось выполнить резервное копирование: {str(e)}")
+
     def dates_overlap(self, start1, end1, start2, end2):
         """Проверка пересечения дат"""
         return start1 <= end2 and start2 <= end1
@@ -411,6 +469,7 @@ class ReportsTab(ttk.Frame):
         return max(0, (overlap_end - overlap_start).days + 1)
 
     def excel_report(self):
+        """Экспорт в Excel - УЛУЧШЕННАЯ ВЕРСИЯ"""
         try:
             if not self.current_report_type:
                 messagebox.showwarning("Предупреждение", "Сначала сгенерируйте отчет")
@@ -430,6 +489,10 @@ class ReportsTab(ttk.Frame):
             for item in self.report_tree.get_children():
                 values = self.report_tree.item(item)['values']
                 data.append(values)
+
+            if not data:
+                messagebox.showwarning("Предупреждение", "Нет данных для экспорта")
+                return
 
             df = pd.DataFrame(data, columns=headers)
 
@@ -452,6 +515,7 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось экспортировать отчет: {str(e)}")
 
     def pdf_report(self):
+        """Экспорт в PDF - УЛУЧШЕННАЯ ВЕРСИЯ"""
         try:
             if not self.current_report_type:
                 messagebox.showwarning("Предупреждение", "Сначала сгенерируйте отчет")
@@ -468,6 +532,10 @@ class ReportsTab(ttk.Frame):
             for item in self.report_tree.get_children():
                 values = self.report_tree.item(item)['values']
                 data.append(values)
+
+            if not data:
+                messagebox.showwarning("Предупреждение", "Нет данных для экспорта")
+                return
 
             df = pd.DataFrame(data, columns=headers)
 

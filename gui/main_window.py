@@ -1,4 +1,3 @@
-import tkinter as tk
 from tkinter import ttk
 from gui.tabs.employees_tab import EmployeesTab
 from gui.tabs.rooms_tab import RoomsTab
@@ -26,8 +25,3 @@ class HotelApp:
         self.notebook.add(self.rooms_tab, text="Номера")
         self.notebook.add(self.bookings_tab, text="Бронирования")
         self.notebook.add(self.reports_tab, text="Отчеты")
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = HotelApp(root)
-    root.mainloop()

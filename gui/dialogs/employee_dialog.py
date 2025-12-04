@@ -1,6 +1,6 @@
 # employee_dialog.py
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from models import Employee
 from datetime import datetime
 from exceptions import InvalidPersonDataError, PersonAlreadyExistsError
@@ -19,8 +19,23 @@ class EmployeeDialog:
         self.dialog.transient(parent)
         self.dialog.grab_set()
 
+        self.existing_positions = self._get_existing_positions()
+
         self.create_widgets()
         self.dialog.wait_window()
+
+    def _get_existing_positions(self):
+        try:
+            employees = Employee.get_all()
+            positions = set()
+            for emp in employees:
+                if self.employee and emp.id == self.employee.id:
+                    continue
+                positions.add(emp.get_position())
+            return sorted(list(positions))
+        except Exception as e:
+            print(f"Ошибка при получении списка должностей: {e}")
+            return []
 
     def create_widgets(self):
         # Основной фрейм для полей ввода
@@ -40,21 +55,24 @@ class EmployeeDialog:
         self.patronymic_entry.grid(row=2, column=1, pady=5, padx=5, sticky='ew')
 
         tk.Label(fields_frame, text="Должность:*").grid(row=3, column=0, sticky='w', pady=5)
-        self.position_entry = tk.Entry(fields_frame, width=25)
-        self.position_entry.grid(row=3, column=1, pady=5, padx=5, sticky='ew')
+        self.position_combobox = ttk.Combobox(fields_frame, width=23)
+        self.position_combobox['values'] = self.existing_positions
+        self.position_combobox.grid(row=3, column=1, pady=5, padx=5, sticky='ew')
+        self.position_combobox.configure(state='normal')
 
-        tk.Label(fields_frame, text="Телефон:*").grid(row=4, column=0, sticky='w', pady=5)
+        tk.Label(fields_frame, text="Телефон:*").grid(row=5, column=0, sticky='w', pady=5)
         self.phone_entry = tk.Entry(fields_frame, width=25)
-        self.phone_entry.grid(row=4, column=1, pady=5, padx=5, sticky='ew')
+        self.phone_entry.grid(row=5, column=1, pady=5, padx=5, sticky='ew')
 
-        tk.Label(fields_frame, text="Email:*").grid(row=5, column=0, sticky='w', pady=5)
+        tk.Label(fields_frame, text="Email:*").grid(row=6, column=0, sticky='w', pady=5)
         self.email_entry = tk.Entry(fields_frame, width=25)
-        self.email_entry.grid(row=5, column=1, pady=5, padx=5, sticky='ew')
+        self.email_entry.grid(row=6, column=1, pady=5, padx=5, sticky='ew')
 
-        tk.Label(fields_frame, text="Дата принятия:*").grid(row=6, column=0, sticky='w', pady=5)
-        tk.Label(fields_frame, text="(ГГГГ-ММ-ДД)").grid(row=6, column=1, sticky='w', pady=5)
+        tk.Label(fields_frame, text="Дата принятия:*").grid(row=7, column=0, sticky='w', pady=5)
+        tk.Label(fields_frame, text="(ГГГГ-ММ-ДД)").grid(row=7, column=1, sticky='w', pady=5)
         self.date_entry = tk.Entry(fields_frame, width=25)
-        self.date_entry.grid(row=7, column=0, columnspan=2, pady=5, padx=5, sticky='ew')
+        self.date_entry.grid(row=8, column=0, columnspan=2, pady=5, padx=5, sticky='ew')
+
         fields_frame.columnconfigure(1, weight=1)
 
         if self.employee:
@@ -72,17 +90,20 @@ class EmployeeDialog:
                   command=self.dialog.destroy, width=15).pack(side='left', padx=10)
 
         self.dialog.bind('<Return>', lambda event: self.save_employee())
-
-        if self.employee:
-            self.surname_entry.focus_set()
-        else:
-            self.name_entry.focus_set()
+        self.surname_entry.focus_set()
 
     def _fill_employee_data(self):
+        """Заполняет поля данными сотрудника для редактирования"""
         self.surname_entry.insert(0, self.employee.get_surname())
         self.name_entry.insert(0, self.employee.get_name())
         self.patronymic_entry.insert(0, self.employee.get_patronymic() or "")
-        self.position_entry.insert(0, self.employee.get_position())
+
+        current_position = self.employee.get_position()
+        self.position_combobox.set(current_position)
+
+        if current_position and current_position not in self.existing_positions:
+            self.position_combobox['values'] = tuple(list(self.existing_positions) + [current_position])
+
         self.phone_entry.insert(0, self.employee.get_phone_num())
         self.email_entry.insert(0, self.employee.get_mail())
         self.date_entry.insert(0, self.employee.get_date_of_employment())
@@ -90,41 +111,47 @@ class EmployeeDialog:
     def _validate_fields(self):
         name = self.name_entry.get().strip()
         surname = self.surname_entry.get().strip()
-        position = self.position_entry.get().strip()
+        position = self.position_combobox.get().strip()
         phone = self.phone_entry.get().strip()
         email = self.email_entry.get().strip()
         date_employed = self.date_entry.get().strip()
         patronymic = self.patronymic_entry.get().strip()
 
-        # Проверка обязательных полей
         if not all([name, surname, position, phone, email, date_employed]):
             raise InvalidPersonDataError("Все поля, кроме отчества, обязательны для заполнения")
 
         if len(name) < 2:
-            raise InvalidPersonDataError("Имя не может быть короче двух символов", "name")
+            raise InvalidPersonDataError("Имя не может быть короче двух символов")
 
         if not name.replace(' ', '').isalpha():
-            raise InvalidPersonDataError("Имя может содержать только буквы и пробелы", "name")
+            raise InvalidPersonDataError("Имя может содержать только буквы и пробелы")
 
         if len(surname) < 2:
-            raise InvalidPersonDataError("Фамилия не может быть короче двух символов", "surname")
+            raise InvalidPersonDataError("Фамилия не может быть короче двух символов")
 
         if not surname.replace(' ', '').isalpha():
-            raise InvalidPersonDataError("Фамилия может содержать только буквы и пробелы", "surname")
+            raise InvalidPersonDataError("Фамилия может содержать только буквы и пробелы")
 
-        if patronymic and not patronymic.replace(' ', '').isalpha():
-            raise InvalidPersonDataError("Отчество может содержать только буквы и пробелы", "patronymic")
+        # Валидация должности
+        if len(position) < 2:
+            raise InvalidPersonDataError("Должность не может быть короче двух символов")
+
+        if patronymic:
+            if not patronymic.replace(' ', '').isalpha():
+                raise InvalidPersonDataError("Отчество может содержать только буквы и пробелы")
+        else:
+            patronymic = ""
 
         if '@' not in email or '.' not in email:
-            raise InvalidPersonDataError("Проверьте правильность ввода Email", "email")
+            raise InvalidPersonDataError("Проверьте правильность ввода Email")
 
         if len(phone) < 5 or not any(c.isdigit() for c in phone):
-            raise InvalidPersonDataError("Проверьте правильность ввода номера телефона", "phone")
+            raise InvalidPersonDataError("Проверьте правильность ввода номера телефона")
 
         try:
             datetime.strptime(date_employed, "%Y-%m-%d")
         except ValueError:
-            raise InvalidPersonDataError("Дата должна быть в формате ГГГГ-ММ-ДД", "date_employed")
+            raise InvalidPersonDataError("Дата должна быть в формате ГГГГ-ММ-ДД")
 
         return {
             'name': name,
@@ -133,7 +160,7 @@ class EmployeeDialog:
             'phone': phone,
             'email': email,
             'date_employed': date_employed,
-            'patronymic': patronymic if patronymic else None
+            'patronymic': patronymic if patronymic else ""
         }
 
     def save_employee(self):

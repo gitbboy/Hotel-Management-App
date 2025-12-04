@@ -4,7 +4,7 @@ from log_config import get_logger
 
 
 class Person:
-    def __init__(self, name, surname, phone_num, patronymic=" ", id=None):
+    def __init__(self, name, surname, phone_num, patronymic="", id=None):
         if not name or not surname:
             raise InvalidDataError("Имя и фамилия обязательны")
 

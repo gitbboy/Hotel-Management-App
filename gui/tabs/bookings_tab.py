@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from models import Booking, Guest, HotelRoom
 from gui.dialogs.booking_dialog import BookingDialog
-from datetime import datetime
 
 
 class BookingsTab(ttk.Frame):

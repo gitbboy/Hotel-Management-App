@@ -11,6 +11,7 @@ class HotelApp:
         self.root.geometry("1200x800")
         self.root.resizable(False, False)
 
+
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
 

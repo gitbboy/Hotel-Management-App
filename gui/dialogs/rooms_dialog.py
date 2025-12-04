@@ -118,7 +118,7 @@ class RoomDialog:
         # Валидация номера комнаты
         validated_number = self._validate_number_format(number)
 
-        # Проверка уникальности (только при создании)
+        # Проверка уникальности
         self._check_room_unique(validated_number)
 
         # Валидация типа комнаты

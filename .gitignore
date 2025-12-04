@@ -1,3 +1,4 @@
 # Log files
 *.tmp
 *.log
+*config.py

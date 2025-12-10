@@ -1,4 +1,3 @@
-# employee_dialog.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 from models import Employee
@@ -149,7 +148,11 @@ class EmployeeDialog:
             raise InvalidPersonDataError("Проверьте правильность ввода номера телефона")
 
         try:
-            datetime.strptime(date_employed, "%Y-%m-%d")
+            datetime.strptime(date_employed, "%Y-%m-%d").date()
+            current_date = datetime.now().date()
+            if date_employed > current_date:
+                raise InvalidPersonDataError("Дата трудоустройства не может быть в будущем")
+
         except ValueError:
             raise InvalidPersonDataError("Дата должна быть в формате ГГГГ-ММ-ДД")
 

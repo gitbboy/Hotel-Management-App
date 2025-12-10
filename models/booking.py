@@ -1,4 +1,4 @@
-from exceptions import InvalidDataError
+from exceptions import InvalidDataError, InvalidPersonDataError, InvalidRoomDataError
 from datetime import date
 from database import Database
 from log_config import get_logger
@@ -32,8 +32,24 @@ class Booking:
     def get_guest_id(self):
         return self.__guest_id
 
+    def set_guest_id(self, value):
+        if not value:
+            self.logger.error(f"Попытка изменение id гостя бронирования")
+            raise InvalidPersonDataError("Ошибка смены id комнаты!")
+
+        self.logger.debug(f"Изменение id гостя бронирования {self.id} на {value}")
+        self.__guest_id = value
+
     def get_room_id(self):
         return self.__room_id
+
+    def set_room_id(self, value):
+        if not value:
+            self.logger.error(f"Попытка изменение id комнаты бронирования")
+            raise InvalidRoomDataError("Ошибка смены id комнаты!")
+
+        self.logger.debug(f"Изменение id комнаты бронирования {self.id} на {value}")
+        self.__room_id = value
 
     def get_check_in_date(self):
         return self.__check_in_date

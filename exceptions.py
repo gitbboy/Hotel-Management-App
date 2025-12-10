@@ -13,15 +13,23 @@ class RoomError(HotelManagementError):
     pass
 
 
+
 class RoomNotFoundError(HotelManagementError):
     """вызывается, когда комната не найдена """
     def __init__(self, room_number: str):
         super().__init__(f"Комната {room_number} не найдена.")
-
+"""
 class BookingError(HotelManagementError):
-    """ошибка при бронировании / освобождении комнаты """
+  ошибка при бронировании / освобождении комнаты 
     def __init__(self, room_number: str, action: str):
         super().__init__(f"Ошибка {action} комнаты {room_number}.")
+"""
+
+class BookingError(Exception):
+    def __init__(self, message, action=None):
+        super().__init__(message)
+        self.message = message
+        self.action = action
 
 class InvalidDataError(HotelManagementError):
     """ошибка валидации данных """
@@ -93,7 +101,7 @@ class InvalidBookingDataError(BookingError):
             super().__init__(f"Неверные данные бронирования: {message}")
 
 class BookingConflictError(BookingError):
-    """Конфликт бронирований (пересечение дат)"""
+    """Конфликт бронирований"""
     def __init__(self, room_number: str, check_in: str, check_out: str):
         super().__init__(
             f"Конфликт бронирований для комнаты {room_number} "

@@ -67,24 +67,29 @@ class BookingsTab(ttk.Frame):
 
             bookings = Booking.get_all()
             for booking in bookings:
-                # Получаем информацию о госте и номере
-                guest = Guest.get_by_id(booking.get_guest_id())
-                room = HotelRoom.get_by_id(booking.get_room_id())
+                try:
+                    # Получаем информацию о госте и номере
+                    guest = Guest.get_by_id(booking.get_guest_id())
+                    room = HotelRoom.get_by_id(booking.get_room_id())
 
-                guest_name = guest.full_name() if guest else "Неизвестно"
-                room_number = room.get_number() if room else "Неизвестно"
-                status = "Активно" if booking.get_is_active() else "Отменено"
+                    guest_name = guest.full_name() if guest else "Неизвестно"
+                    room_number = room.get_number() if room else "Неизвестно"
+                    status = "Активно" if booking.get_is_active() else "Отменено"
 
-                self.bookings_tree.insert('', 'end', values=(
-                    booking.id,
-                    booking.get_guest_id(),
-                    guest_name,
-                    booking.get_room_id(),
-                    room_number,
-                    booking.get_check_in_date(),
-                    booking.get_check_out_date(),
-                    status
-                ))
+                    self.bookings_tree.insert('', 'end', values=(
+                        booking.id,
+                        booking.get_guest_id(),
+                        guest_name,
+                        booking.get_room_id(),
+                        room_number,
+                        booking.get_check_in_date(),
+                        booking.get_check_out_date(),
+                        status
+                    ))
+                except Exception as e:
+                    # Если ошибка при обработке отдельного бронирования
+                    print(f"Ошибка при обработке бронирования {booking.id}: {e}")
+                    continue
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось загрузить бронирования: {str(e)}")
 
@@ -131,8 +136,6 @@ class BookingsTab(ttk.Frame):
         try:
             booking = Booking.get_by_id(booking_id)
             if booking and booking.get_is_active():
-                # Здесь можно добавить логику регистрации заезда
-                # Например, пометить номер как занятый
                 room = HotelRoom.get_by_id(booking.get_room_id())
                 if room and room.is_free():
                     room.set_free(False)

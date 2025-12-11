@@ -98,7 +98,6 @@ class RoomDialog:
         return number
 
     def _check_room_unique(self, number):
-        """Проверка уникальности номера комнаты"""
         if not self.room:
             existing_rooms = HotelRoom.get_all()
             for room in existing_rooms:
@@ -197,15 +196,12 @@ class RoomDialog:
     def _update_room(self, data):
         """Обновление данных номера"""
         try:
-            # Обновляем данные комнаты
             self.room.set_free(data['is_free'])
-
-            # Для других полей нужны сеттеры - временно используем прямой доступ
-            # В идеале нужно добавить сеттеры в класс HotelRoom
             self.room._HotelRoom__room_id = data['number']
-            self.room._HotelRoom__type = data['type']
-            self.room._HotelRoom__price = data['price']
-            self.room._HotelRoom__capacity = data['capacity']
+
+            self.room.set_type(data['type'])
+            self.room.set_price(data['price'])
+            self.room.set_capacity(data['capacity'])
 
             self.room.update()
             messagebox.showinfo("Успех", "Данные номера успешно обновлены!")

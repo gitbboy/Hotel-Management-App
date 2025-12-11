@@ -50,7 +50,10 @@ class Person:
         self._phone_num = value
 
     def full_name(self):
-        return f"{self._surname} {self._name} {self._patronymic}".strip()
+        if self._patronymic:
+            return f"{self._surname} {self._name} {self._patronymic}".strip()
+        else:
+            return f"{self._surname} {self._name}".strip()
 
     """Абстрактные методы для переопределения в дочерних классах"""
     def save(self):

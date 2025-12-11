@@ -144,13 +144,13 @@ class EmployeeDialog:
         if '@' not in email or '.' not in email:
             raise InvalidPersonDataError("Проверьте правильность ввода Email")
 
-        if len(phone) < 5 or not any(c.isdigit() for c in phone):
+        if len(phone) < 5 or not all(c.isdigit() for c in phone if c != '+'):
             raise InvalidPersonDataError("Проверьте правильность ввода номера телефона")
 
         try:
-            datetime.strptime(date_employed, "%Y-%m-%d").date()
-            current_date = datetime.now().date()
-            if date_employed > current_date:
+            date_of_employed = datetime.strptime(date_employed, "%Y-%m-%d").date()
+
+            if date_of_employed > datetime.now().date():
                 raise InvalidPersonDataError("Дата трудоустройства не может быть в будущем")
 
         except ValueError:

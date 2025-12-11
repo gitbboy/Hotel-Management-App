@@ -1,5 +1,5 @@
 from exceptions import InvalidDataError, InvalidPersonDataError, InvalidRoomDataError
-from datetime import date
+from datetime import date, datetime
 from database import Database
 from log_config import get_logger
 
@@ -184,3 +184,38 @@ class Booking:
             ))
         logger.info(f"Найдено {len(bookings)} активных бронирований")
         return bookings
+
+    @classmethod
+    def is_room_available(cls, room_id, check_in_date, check_out_date, exclude_booking_id=None):
+        try:
+            bookings = cls.get_all()
+
+            if isinstance(check_in_date, str):
+                check_in_date = datetime.strptime(check_in_date, "%Y-%m-%d").date()
+            if isinstance(check_out_date, str):
+                check_out_date = datetime.strptime(check_out_date, "%Y-%m-%d").date()
+
+            for booking in bookings:
+                # Пропускаем исключаемое бронирование (при редактировании)
+                if exclude_booking_id and booking.id == exclude_booking_id:
+                    continue
+
+                if booking.__room_id == room_id and booking.__is_active:
+
+                    existing_check_in = booking.__check_in_date
+                    existing_check_out = booking.__check_out_date
+
+                    if isinstance(existing_check_in, str):
+                        existing_check_in = datetime.strptime(existing_check_in, "%Y-%m-%d").date()
+                    if isinstance(existing_check_out, str):
+                        existing_check_out = datetime.strptime(existing_check_out, "%Y-%m-%d").date()
+
+                    if not (check_out_date <= existing_check_in or check_in_date >= existing_check_out):
+                        # Найдено пересечение
+                        return False
+
+            return True
+
+        except Exception as e:
+            print(f"Ошибка при проверке доступности номера: {e}")
+            return False

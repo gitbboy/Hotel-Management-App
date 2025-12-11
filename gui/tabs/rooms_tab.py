@@ -129,10 +129,14 @@ class RoomsTab(ttk.Frame):
         if result:
             try:
                 room = HotelRoom.get_by_id(room_id)
-                if room:
+                if room and room.is_free():
                     room.delete()
                     messagebox.showinfo("Успех", "Номер удален")
                     self.refresh_rooms()
+
+                elif not room.is_free():
+                    messagebox.showerror("Ошибка", "Нельзя удалить номер во время бронирования")
+
                 else:
                     messagebox.showerror("Ошибка", "Номер не найден")
             except Exception as e:

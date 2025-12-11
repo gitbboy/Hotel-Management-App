@@ -30,6 +30,13 @@ class HotelRoom:
     def get_type(self):
         return self.__type
 
+    def set_type(self, value):
+        if not value:
+            self.logger.error("Попытка изменения тип комнаты")
+            raise InvalidDataError("Неверный тип комнаты")
+        self.logger.debug(f"Изменение типа комнаты {self.__room_id} с {self.__type} на {value}")
+        self.__type = value
+
     def get_number(self):
         return self.__room_id
 
@@ -38,7 +45,7 @@ class HotelRoom:
 
     def set_price(self, value):
         if value < 0:
-            self.logger.error("Попытка изменения с отрицательной ценой")
+            self.logger.error("Попытка цены номера изменения с отрицательным значением")
             raise InvalidDataError("Цена не может быть отрицательной")
         self.logger.debug(f"Изменение цены комнаты {self.__room_id} с {self.__price} на {value}")
         self.__price = float(value)

@@ -109,7 +109,7 @@ class HotelRoom:
 
     @classmethod
     def get_by_id(cls, id):
-        logger = get_logger('room')  # Создаем логгер для classmethod
+        logger = get_logger('room')
         logger.debug(f"Поиск комнаты по ID: {id}")
         db = Database()
         query = "SELECT * FROM rooms WHERE id=%s"
@@ -130,7 +130,7 @@ class HotelRoom:
 
     @classmethod
     def get_by_room_id(cls, room_id):
-        logger = get_logger('room')  # Создаем логгер для classmethod
+        logger = get_logger('room')
         logger.debug(f"Поиск комнаты по номеру: {room_id}")
         db = Database()
         query = "SELECT * FROM rooms WHERE room_id=%s"
@@ -172,7 +172,7 @@ class HotelRoom:
 
     @classmethod
     def get_available_rooms(cls):
-        logger = get_logger('room')  # Создаем логгер для classmethod
+        logger = get_logger('room')
         logger.debug("Запрос доступных комнат из БД")
         db = Database()
         query = "SELECT * FROM rooms WHERE is_free = TRUE"

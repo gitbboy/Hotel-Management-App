@@ -4,7 +4,7 @@ import pandas as pd
 from models import Employee, Guest, HotelRoom, Booking
 from services.export_service import ExportService
 from datetime import datetime, timedelta
-
+import re
 
 class ReportsTab(ttk.Frame):
     def __init__(self, parent):
@@ -53,7 +53,7 @@ class ReportsTab(ttk.Frame):
             widget.destroy()
 
     def setup_date_filters(self):
-        """Настройка фильтров по дате - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Настройка фильтров по дате"""
         self.clear_filters()
 
         # Период отчета
@@ -108,7 +108,7 @@ class ReportsTab(ttk.Frame):
                 self.custom_dates_frame.pack_forget()
 
     def apply_filters(self):
-        """Применение фильтров и обновление отчета - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Применение фильтров и обновление отчета"""
         if not self.current_report_type:
             return
 
@@ -127,7 +127,7 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Ошибка применения фильтров: {str(e)}")
 
     def get_date_range(self):
-        """Получение диапазона дат на основе выбранного периода - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        """Получение диапазона дат на основе выбранного периода"""
         today = datetime.now().date()
 
         try:
@@ -146,8 +146,18 @@ class ReportsTab(ttk.Frame):
                 start_date = today.replace(month=1, day=1)
                 end_date = today
             else:  # custom
-                start_date = datetime.strptime(self.start_date_entry.get(), "%Y-%m-%d").date()
-                end_date = datetime.strptime(self.end_date_entry.get(), "%Y-%m-%d").date()
+                start_str = self.start_date_entry.get()
+                end_str = self.end_date_entry.get()
+
+                if not start_str or not end_str:
+                    raise ValueError("Даты не могут быть пустыми")
+
+                date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+                if not re.match(date_pattern, start_str) or not re.match(date_pattern, end_str):
+                    raise ValueError("Дата должна быть в формате ГГГГ-ММ-ДД")
+
+                start_date = datetime.strptime(start_str, "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
 
                 # Валидация дат
                 self.validate_date_range(start_date, end_date)
@@ -157,6 +167,7 @@ class ReportsTab(ttk.Frame):
         except ValueError as e:
             messagebox.showerror("Ошибка", f"Неверный формат даты: {str(e)}")
             return today.replace(day=1), today
+
         except Exception as e:
             messagebox.showerror("Ошибка", str(e))
             return today.replace(day=1), today
@@ -197,7 +208,7 @@ class ReportsTab(ttk.Frame):
             self.report_tree.heading(col_id, text=heading)
 
     def occupancy_report(self):
-        """Отчет по занятости номеров - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Отчет по занятости номеров"""
         self.clear_report()
         self.current_report_type = "occupancy"
         self.setup_date_filters()
@@ -264,7 +275,7 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось обновить отчет по занятости: {str(e)}")
 
     def financial_report(self):
-        """Финансовый отчет - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Финансовый отчет"""
         self.clear_report()
         self.current_report_type = "financial"
         self.setup_date_filters()
@@ -333,7 +344,7 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось обновить финансовый отчет: {str(e)}")
 
     def guests_report(self):
-        """Отчет по гостям - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Отчет по гостям"""
         self.clear_report()
         self.current_report_type = "guests"
         self.setup_date_filters()
@@ -410,7 +421,7 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось обновить отчет по гостям: {str(e)}")
 
     def staff_report(self):
-        """Отчет по сотрудникам - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Отчет по сотрудникам"""
         self.clear_report()
         self.current_report_type = "staff"
         self.clear_filters()
@@ -469,7 +480,7 @@ class ReportsTab(ttk.Frame):
         return max(0, (overlap_end - overlap_start).days + 1)
 
     def excel_report(self):
-        """Экспорт в Excel - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Экспорт в Excel"""
         try:
             if not self.current_report_type:
                 messagebox.showwarning("Предупреждение", "Сначала сгенерируйте отчет")
@@ -515,7 +526,7 @@ class ReportsTab(ttk.Frame):
             messagebox.showerror("Ошибка", f"Не удалось экспортировать отчет: {str(e)}")
 
     def pdf_report(self):
-        """Экспорт в PDF - УЛУЧШЕННАЯ ВЕРСИЯ"""
+        """Экспорт в PDF"""
         try:
             if not self.current_report_type:
                 messagebox.showwarning("Предупреждение", "Сначала сгенерируйте отчет")

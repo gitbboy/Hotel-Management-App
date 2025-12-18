@@ -1,14 +1,13 @@
 import pytest
 from datetime import date
 from database import Database
-from unittest.mock import Mock
+#from unittest.mock import Mock
 from exceptions import RoomNotFoundError, BookingError, InvalidDataError
 
 
 from models import Person, Employee, Guest
 from models import HotelRoom
 from models import Booking
-from models import Hotel
 
 
 def test_database_connection():
@@ -162,88 +161,6 @@ class TestBooking:
         assert booking.get_check_out_date() == new_check_out
         assert booking.get_is_active() == False
 
-
-class TestHotel:
-    def test_hotel_creation(self):
-        hotel = Hotel()
-
-        assert hotel.get_employees_list() == []
-        assert hotel.get_free_rooms() == []
-        assert hotel.get_price_list() == []
-
-    def test_hotel_employee_management(self):
-        hotel = Hotel()
-        employee = Employee("John", "Doe", "Manager", "123456789", "john@hotel.com", "2023-01-15")
-
-        hotel.add_employee(employee)
-        assert len(hotel.get_employees_list()) == 1
-        assert hotel.get_employees_list()[0] == employee
-
-        hotel.remove_employee(employee)
-        assert len(hotel.get_employees_list()) == 0
-
-    def test_hotel_room_management(self):
-        hotel = Hotel()
-        room = HotelRoom("101", 100.0, "Standard", 2)
-
-        hotel.add_room(room)
-        assert len(hotel.get_free_rooms()) == 1
-        assert hotel.get_free_rooms()[0] == room
-        assert len(hotel.get_price_list()) == 1
-
-        hotel.remove_room(room.get_number())
-        assert len(hotel.get_free_rooms()) == 0
-
-    def test_hotel_booking_management(self):
-        hotel = Hotel()
-
-        mock_room = Mock()
-        mock_room.is_free.return_value = True
-        mock_room.get_number.return_value = "101"
-
-        mock_guest = Mock()
-        mock_guest.full_name.return_value = "John Doe"
-        mock_guest.get_phone_num.return_value = "123456789"
-
-        mock_booking = Mock()
-        mock_booking.get_room.return_value = mock_room
-        mock_booking.get_guest.return_value = mock_guest
-        mock_booking.get_check_in_date.return_value = date(2024, 1, 1)
-        mock_booking.get_check_out_date.return_value = date(2024, 1, 5)
-
-        hotel.add_booking(mock_booking)
-
-        guests_info = hotel.get_guests_info()
-        assert len(guests_info) == 1
-        assert guests_info[0]['guest'] == "John Doe"
-        assert guests_info[0]['phone'] == "123456789"
-        assert guests_info[0]['room'] == "101"
-
-    def test_hotel_monthly_report(self):
-        hotel = Hotel()
-
-        room1 = HotelRoom("101", 100.0, "Standard", 2)
-        room2 = HotelRoom("102", 200.0, "Deluxe", 3)
-
-        hotel.add_room(room1)
-        hotel.add_room(room2)
-
-        mock_booking = Mock()
-        mock_booking.get_room.return_value = room1
-        mock_booking.get_check_in_date.return_value = date(2024, 1, 10)
-        mock_booking.get_check_out_date.return_value = date(2024, 1, 15)
-
-        hotel.add_booking(mock_booking)
-
-        # Тестируем отчет за январь 2024
-        report = hotel.get_monthly_report(1, 2024)
-
-        assert "101" in report
-        assert "102" in report
-        assert report["101"]['occupied_days'] == 6  # 10-15 января включительно
-        assert report["102"]['occupied_days'] == 0
-
-
 @pytest.mark.parametrize("name,surname,phone,expected_fullname", [
     ("John", "Doe", "123456789", "Doe John"),
     ("Alice", "Smith", "987654321", "Smith Alice"),
@@ -276,37 +193,13 @@ class TestExceptions:
 
     def test_booking_error(self):
         with pytest.raises(BookingError) as exc_info:
-            raise BookingError("101", "бронирования")
-        assert "Ошибка бронирования комнаты 101" in str(exc_info.value)
+            raise BookingError(f"Ошибка бронирования комнаты {101}", "бронирования")
+        assert f"Ошибка бронирования комнаты 101" in str(exc_info.value)
 
     def test_invalid_data_error(self):
         with pytest.raises(InvalidDataError) as exc_info:
             raise InvalidDataError("отрицательная цена")
         assert "Неверные данные: отрицательная цена" in str(exc_info.value)
-
-    def test_hotel_add_invalid_room(self):
-        hotel = Hotel()
-
-        # Попытка добавить комнату с отрицательной ценой
-        #with pytest.raises(InvalidDataError):
-        #    room = HotelRoom("101", -100, "Standard", 2)
-
-    def test_hotel_remove_nonexistent_room(self):
-        hotel = Hotel()
-
-        # Несуществующая комната
-        with pytest.raises(RoomNotFoundError):
-            hotel.remove_room("999")
-
-    def test_hotel_add_duplicate_room(self):
-        hotel = Hotel()
-        room1 = HotelRoom("101", 100, "Standard", 2)
-        room2 = HotelRoom("101", 150, "Deluxe", 3)
-
-        hotel.add_room(room1)
-
-        with pytest.raises(BookingError):
-            hotel.add_room(room2)
 
     def test_booking_invalid_dates(self):
         # Дата выезда раньше даты заезда

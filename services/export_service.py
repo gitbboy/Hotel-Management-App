@@ -132,7 +132,7 @@ class ExportService:
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".xlsx",
                 filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-                title="Сохранить отчет как"
+                title="Сохранить отчет как XML"
             )
 
             if not file_path:
@@ -267,7 +267,7 @@ class ExportService:
     # Статические методы для обратной совместимости
     @staticmethod
     def extract_excel_all():
-        """Метод резервного копирования (для обратной совместимости)"""
+        """Метод резервного копирования"""
         try:
             success, message = ExportService.extract_excel_all_threaded()
             if success:
@@ -279,7 +279,7 @@ class ExportService:
 
     @staticmethod
     def export_single_sheet(dataframe, sheet_name="Отчет"):
-        """Метод экспорта в Excel (для обратной совместимости)"""
+        """Метод экспорта в Excel"""
         try:
             success, message, file_path = ExportService.export_single_sheet_threaded(dataframe, sheet_name)
             if success:
@@ -296,7 +296,7 @@ class ExportService:
 
     @staticmethod
     def export_single_sheet_to_pdf(dataframe, title="Отчет"):
-        """Метод экспорта в PDF (для обратной совместимости)"""
+        """Метод экспорта в PDF"""
         try:
             success, message, file_path = ExportService.export_single_sheet_to_pdf_threaded(dataframe, title)
             if success:
